@@ -1,0 +1,378 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{array,tabularx}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\setlist[itemize]{leftmargin=*,itemsep=3pt,topsep=4pt}
+\renewcommand{\arraystretch}{1.2}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\title{PV Fault Forecasting Architecture}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Problem Definition}
+
+\subsection*{PV Fault Forecasting}
+Given a multivariate time series of SCADA signals from an inverter (DC/AC power, voltage, current, solar irradiance, temperature) up to time $t$, the aim is to predict whether a fault of a specific type (open circuit, short circuit, inverter clipping, overheating, ground fault, etc.) will occur within a future horizon $h$ (e.g., the next 1 h, 6 h, or 24 h).
+
+\subsection*{PV Degradation Analysis}
+Using a long-horizon time series (weeks to months) of the same SCADA signals, the rate and pattern of gradual performance degradation of the inverter/array must be estimated, independently of weather effects. Possible outputs are the degradation rate (\% per year), a degradation curve, and an estimate of Remaining Useful Life (RUL).
+
+\subsection*{Relationship Between the Two Tasks}
+PV-FF is an early warning system: it detects and predicts discrete fault events in the short term. PV-DA is a health monitoring system: it tracks continuous performance degradation over the long term.
+
+\section{Architecture}
+
+\subsection*{Stage 1 -- CS-LSTM Regression}
+\emph{Expected behavior under (context-aware) normal conditions.}
+
+\begin{itemize}
+    \item \textbf{Purpose:} Predict the expected AC/DC power under normal conditions. The residual, measured $-$ expected, becomes the anomaly signal for all subsequent stages.
+    \item \textbf{Rationale:} [A Comprehensive Framework for Predictive Maintenance in Solar Photovoltaic Systems Using Contextual Deep Model] shows that CS-LSTM, by incorporating contextual features (season, time of day) through contextual weighting, achieves $R^2 = 0.9741$ and improves RMSE by 58.96\% over the baseline LSTM, outperforming ANN, RFR, LSTM, and CNN-LSTM with and without contextual features.
+    \item \textbf{Contextual features:} Season, time of day (sin/cos encoding), and seasonal decomposition (STL) residuals [Trend-Based Predictive Maintenance and Fault Detection Analytics for Photovoltaic Power Plants].
+\end{itemize}
+
+\subsection*{Stage 2 -- XGBoost: Fault Detection \& Classification}
+\begin{itemize}
+    \item \textbf{Purpose:} (a) Binary Normal/Fault classification; (b) multiclass classification of fault type; (c) prediction of a \emph{Fault Impending} class (3 timesteps before each fault event, as proposed by Baruah et al.), extended to 1-day-ahead prediction.
+    \item \textbf{Rationale:} Baruah et al. (2025) compare DT, RF, kNN, AdaBoost, and MLP; RF achieves the best F1 score of 0.992. Many other papers show that XGBoost is among the top methods for both regression and classification tasks because of faster training, built-in regularization, and native feature importance supporting SHAP, compared with, for example, Random Forests.
+\end{itemize}
+
+\subsubsection*{XAI Layer -- SHAP, LIME, DiCE}
+\begin{itemize}
+    \item Integrated on top of the XGBoost classification stage.
+    \item \textbf{SHAP values:} Feature importance per prediction (global and local).
+    \item \textbf{LIME:} Local interpretability for individual fault events.
+    \item \textbf{DiCE:} Generates multiple counterfactuals for a prediction.
+    \item \textbf{Rationale:} XAI-enabled fault detection and diagnosis (FDD) increases operator trust and enables fault explanations that can be used for predictive maintenance tasks.
+    \item Critical for real-world deployment.
+\end{itemize}
+
+\subsection*{Stage 3 -- HMM: Hidden System States (PV-FF Head)}
+\begin{itemize}
+    \item \textbf{Purpose:} Model the sequence of states $\{\text{Normal} \rightarrow \text{Pre-fault} \rightarrow \text{Fault}\}$ as a Markov chain. The HMM learns transition probabilities between hidden states from the CS-LSTM residuals.
+    \item \textbf{Rationale:} Inverter faults do not appear immediately; they develop in phases. An HMM is suitable for sequential state estimation under uncertainty. The HMM + LSTM combination is powerful for fault prognostics.
+\end{itemize}
+
+\subsection*{Stage 3 -- LSTM Forecasting Head (PV-FF Head)}
+\begin{itemize}
+    \item \textbf{Purpose:} Given the HMM state posteriors and the residuals, predict $P(\text{fault\_type}\mid t+h)$ for the horizons $h \in \{1\text{ h}, 6\text{ h}, 24\text{ h}\}$.
+    \item \textbf{Rationale:} Baruah et al. (2025) demonstrate early warning up to 2 hours before a fault.
+\end{itemize}
+
+\subsection*{Stage 3 -- STL Decomposition + Reliability Score (PV-DA Head)}
+\begin{itemize}
+    \item \textbf{Purpose:} Separate the long-term degradation trend from seasonality and weather variability. The Reliability Score
+    \[
+        RS(t) = \frac{PR_{\mathrm{normalized}}(t)}{PR_{\mathrm{baseline}}}
+    \]
+    tracks gradual degradation. Remaining Useful Life (RUL) is estimated from the slope of the RS trend.
+    \item \textbf{Correlation Drift feature:} $D_t = \lVert R(\omega)_t - R(0)\rVert_F$ measures the deviation of the signals' correlation matrix from the initial baseline. It is an early indication of degradation or a structural fault before power loss occurs, and is included as an additional feature in the DA head.
+    \item \textbf{Rationale:} [Stanchev \& Hinov] propose a Health Index framework based on normalized performance metrics for PV degradation tracking. STL (Seasonal-Trend decomposition via LOESS) is an established method for time-series decomposition in energy systems.
+\end{itemize}
+
+\section{Data}
+
+\subsection*{NIST Dataset}
+\url{https://pvdata.nist.gov/}
+
+\noindent\textbf{Information:}\\
+Location: Maryland, USA\\
+Time granularity: 1 minute
+
+\medskip
+\noindent\begin{tabularx}{\textwidth}{@{}lY@{}}
+\hline
+\textbf{Location} & \textbf{Description} \\
+\hline
+Ground & Panels installed on the ground \\
+Roof & Panels on the roof of a building \\
+Canopy & Panels forming a parking canopy \\
+ws\_1, ws\_2 & Weather stations: independent meteorological stations \\
+\hline
+\end{tabularx}
+
+\begin{itemize}
+    \item Canopy data (2015, 2016, 2017, 2018): 2,102,400 rows.
+    \item Ground data (2015, 2016, 2017, 2018): 2,102,400 rows.
+    \item Roof data (2015, 2016, 2017, 2018): 1,706,400 rows.
+\end{itemize}
+
+\subsection*{Weather Data}
+\begin{tabularx}{\textwidth}{@{}p{0.49\textwidth}Y@{}}
+\hline
+\textbf{Column} & \textbf{What it measures} \\
+\hline
+\texttt{Pyra1\_Wm2\_Avg} & Solar irradiance from 2 pyranometers (W/m$^2$) \\
+\texttt{RefCell1\_Wm2\_Avg} & Irradiance from a reference cell \\
+\texttt{AmbTemp\_C\_Avg} & Ambient temperature ($^\circ$C) \\
+\texttt{SEWSPOAIrrad\_Wm2\_Avg} & Plane-of-array irradiance \\
+\texttt{WindSpeedAve\_ms}, \texttt{WindDirAve\_deg} & Wind speed and direction \\
+\hline
+\end{tabularx}
+
+\subsection*{Inverter Data}
+\begin{tabularx}{\textwidth}{@{}p{0.41\textwidth}Y@{}}
+\hline
+\textbf{Column} & \textbf{What it measures} \\
+\hline
+\texttt{InvPAC\_kW\_Avg} & Inverter AC output power (kW): target \\
+\texttt{InvPDC\_kW\_Avg} & DC input power \\
+\texttt{InvVDCin\_Avg} & DC input voltage \\
+\texttt{InvIDCin\_Avg} & DC input current \\
+\texttt{InvVa/b/c\_Avg} & AC voltages (3 phases) \\
+\texttt{InvOpStatus\_Avg} & Inverter operating status (0 = off, other = on) \\
+\texttt{InvMainFault\_Max} & Inverter faults: fault label \\
+\hline
+\end{tabularx}
+
+\subsection*{String Currents (Shunts)}
+\begin{tabularx}{\textwidth}{@{}p{0.41\textwidth}Y@{}}
+\hline
+\textbf{Column} & \textbf{What it measures} \\
+\hline
+\texttt{ShuntCurrent\_A\_Avg\_1} to \texttt{\_7} & Current from 7 separate panel strings, used to identify a problem in a specific string \\
+\hline
+\end{tabularx}
+
+\smallskip
+{\raggedright\noindent\textbf{Fault flags:} \texttt{InvMainFault\_Max}, \texttt{InvDriveFault\_Max}, \texttt{InvVoltageFault\_Max}, \texttt{InvGridFault\_Max}, \texttt{InvTempFault\_Max}, \texttt{InvSystemFault\_Max}, \texttt{InvSystemWarn\_Max}.\par}
+
+\subsection*{Preprocessing}
+
+\subsubsection*{Operating Mask}
+\begin{itemize}
+    \item Keep only timesteps with irradiance $\geq 100\ \mathrm{W/m^2}$.
+    \item The 100 W/m$^2$ threshold excludes the first and last hour of the day, which are noisy due to the low solar angle and high relative sensor uncertainty.
+\end{itemize}
+
+\subsubsection*{Outliers}
+Domain-knowledge rules are applied before any statistical filter:
+\begin{itemize}
+    \item Remove negative values.
+    \item Depending on the physical interpretation of the features, specific valid value ranges may apply.
+    \item Statistical: IQR-based outlier detection for each feature, separately by season.
+\end{itemize}
+
+\subsubsection*{Missing Values}
+\begin{itemize}
+    \item Features with more than 5\% missing values in the entire dataset: remove the feature.
+    \item Features with at most 5\% missing values: forward fill / backward fill.
+    \item If a gap exceeds 3 minutes, flag the entire corresponding one-hour window and exclude it from training, but not from testing (to evaluate model robustness under noisy conditions).
+\end{itemize}
+
+\subsubsection*{Feature Engineering (Before Labeling)}
+\begin{itemize}
+    \item Performance Ratio (PR):
+    \[
+        PR = \frac{\texttt{InvPDC\_kW\_Avg}}{(\texttt{SEWSPOAIrrad\_Wm2\_Avg}/1000)\times P_{\mathrm{nominal}}}.
+    \]
+    \item Inverter efficiency:
+    \[
+        \mathrm{InvEff} = \frac{\texttt{InvPAC\_kW\_Avg}}{\texttt{InvPDC\_kW\_Avg}}.
+    \]
+    \item String imbalance:
+    \[
+        \frac{\operatorname{std}(\text{ShuntCurrent\_A\_Avg\_1..7})}
+             {\operatorname{mean}(\text{ShuntCurrent\_A\_Avg\_1..7})}.
+    \]
+    An important feature for open-circuit / ground-fault detection.
+    \item Correlation Drift: $D_t = \lVert R(\omega)_t - R(0)\rVert_F$ over a rolling 30-minute window.
+    \item STL decomposition: trend, seasonality, and residual components as separate features for the DA head.
+\end{itemize}
+
+\subsubsection*{Labeling}
+The procedure analyzed: LSTM-AE anomaly detection $\rightarrow$ physics/rule-based fault typing $\rightarrow$ PU Learning propagation. Fault flags such as \texttt{InvMainFault\_Max} and \texttt{InvTempFault\_Max} are used to validate the generated labels, not as direct training labels.
+
+\subsubsection*{Prediction Targets}
+\begin{itemize}
+    \item \textbf{PV-FF:} \texttt{InvPAC\_kW\_Avg}---AC output power is the final deliverable of the inverter and the most useful quantity for grid operators. \texttt{InvPDC\_kW\_Avg} serves as an intermediate target for the CS-LSTM regression stage (baseline modeling).
+    \item \textbf{PV-DA:} Rolling 30-day PR trend, with seasonality removed through STL.
+\end{itemize}
+
+\subsubsection*{Class Imbalance \& Fault Augmentation}
+Faults are rare and are expected to account for less than 5\% of operating time. Techniques to address this include:
+\begin{itemize}
+    \item \textbf{SMOTE:} Creates synthetic samples in feature space between neighboring fault samples. Applied only to the training set.
+    \item \textbf{Fault Injection:} Park et al. (2020).
+    \item \textbf{Fault Impending class:} The 3 timesteps before each confirmed fault event receive a separate class, as in Baruah et al. (2025), increasing the number of useful training samples.
+\end{itemize}
+
+\subsubsection*{Train / Validation / Test Split}
+Proposed chronological split using the available data (2015--2018):
+\begin{itemize}
+    \item 2015, 2016: Training set.
+    \item 2017: Validation set.
+    \item 2018: Test set.
+\end{itemize}
+
+\noindent\textbf{Rationale for this split:}
+\begin{itemize}
+    \item The training set includes two full years with complete seasonality (two summer/winter cycles), allowing the CS-LSTM to learn seasonal patterns.
+    \item The validation set is one full year (2017), sufficient for hyperparameter tuning with complete seasonal coverage, so that no season is favored.
+    \item The test set covers one year, allowing evaluation over the full period. Note: the Roof dataset only extends through April 2018.
+\end{itemize}
+
+\subsubsection*{Cross-Site Generalization}
+Use either the Roof or the Canopy dataset for cross-site verification.
+
+\section{Training / Validation / Testing}
+
+\subsection*{Architecture Training: Sequential, Stage by Stage}
+Training will be carried out sequentially, because each stage depends on the output of the previous one.
+
+\begin{center}
+Stage 1 $\rightarrow$ Stage 2 $\rightarrow$ PV-FF Head $\rightarrow$ PV-DA Head
+\end{center}
+
+\subsection*{Stage 1 -- CS-LSTM Regression}
+\begin{itemize}
+    \item Trained first, using only confirmed-normal data (filtered 2015--2016 data).
+    \item Objective: minimize RMSE between predicted and actual \texttt{InvPAC\_kW\_Avg}.
+    \item After training, the model is frozen and its residuals are used as features for Stage 2.
+    \item Optimizer: RMSProp (as in Baruah et al., 2025), stable for time-series LSTM.
+    \item Loss: MSE.
+\end{itemize}
+
+\subsection*{Stage 2 -- XGBoost Classification}
+\begin{itemize}
+    \item Trained second, with residuals + engineered features + fault labels from the labeling pipeline as input.
+    \item SMOTE is applied before fitting, only to the training fold.
+    \item Feature importance through built-in XGBoost functionality, followed by SHAP analysis for the XAI layer.
+    \item Hyperparameter tuning: GridSearchCV with 5-fold time-series cross-validation.
+\end{itemize}
+
+\subsection*{Stage 3 -- PV-FF Head: HMM + LSTM Forecasting}
+\begin{itemize}
+    \item The HMM is trained on the XGBoost posteriors to learn state sequences.
+    \item LSTM forecasting is trained on the HMM output + original features.
+    \item Loss: Binary Cross-Entropy for each fault type (one-vs-rest), weighted for class imbalance.
+\end{itemize}
+
+\subsection*{Stage 3 -- PV-DA Head: STL + Reliability Score}
+\begin{itemize}
+    \item STL decomposition.
+    \item Reliability Score trend: linear regression on weather-normalized PR, with confidence intervals.
+\end{itemize}
+
+\subsection*{Hyperparameters by Model}
+
+\subsubsection*{CS-LSTM}
+\begin{tabularx}{\textwidth}{@{}p{0.53\textwidth}Y@{}}
+\hline
+\textbf{Hyperparameter} & \textbf{Search range} \\
+\hline
+Hidden units & 10, 15, 20, 25, 30 \\
+Sequence length (window) & 5, 10, 15, 30, 60 min \\
+Learning rate & $[10^{-5}, 10^{-3}]$ \\
+Dropout & 0.1, 0.2, 0.3 \\
+Batch size & 64, 128, 256 \\
+Epochs & 50--150 \\
+LSTM layers & 1, 2 \\
+Polynomial basis degree (context) & 2, 3 \\
+Optimizer & RMSProp, Adam \\
+\hline
+\end{tabularx}
+
+\subsubsection*{XGBoost}
+\begin{tabularx}{\textwidth}{@{}p{0.53\textwidth}Y@{}}
+\hline
+\textbf{Hyperparameter} & \textbf{Search range} \\
+\hline
+\texttt{n\_estimators} & 100, 200, 300, 500 \\
+\texttt{max\_depth} & 4, 6, 8, 10 \\
+\texttt{learning\_rate} ($\eta$) & 0.01, 0.05, 0.1, 0.3 \\
+\hline
+\end{tabularx}
+
+\subsubsection*{HMM (PV-FF Head)}
+\begin{tabularx}{\textwidth}{@{}p{0.53\textwidth}Y@{}}
+\hline
+\textbf{Hyperparameter} & \textbf{Value / Rationale} \\
+\hline
+Number of hidden states & 3: \{Normal, Pre-fault, Fault\} \\
+Emission distribution & Gaussian Mixture (3 components) \\
+Convergence threshold & $10^{-4}$ \\
+N restarts & 10 (to avoid local minima) \\
+\hline
+\end{tabularx}
+
+\subsubsection*{LSTM Forecasting Head (PV-FF)}
+\begin{tabularx}{\textwidth}{@{}p{0.53\textwidth}Y@{}}
+\hline
+\textbf{Hyperparameter} & \textbf{Range} \\
+\hline
+Hidden units & 32, 64, 128 \\
+Forecast horizons $h$ & 1 h, 6 h, 24 h (separate output head for each horizon) \\
+Dropout & 0.1, 0.2, 0.3 \\
+Epochs & 50--100 \\
+Loss & Weighted Binary Cross-Entropy \\
+\hline
+\end{tabularx}
+
+\subsection*{Evaluation Metrics}
+
+\subsubsection*{CS-LSTM -- Regression}
+\begin{tabularx}{\textwidth}{@{}p{0.4\textwidth}Y@{}}
+\hline
+\textbf{Metric} & \textbf{What it measures} \\
+\hline
+RMSE & Absolute error in kW \\
+NRMSE & RMSE / mean($P$) \\
+$R^2$ & Percentage of explained variance \\
+MAE & Robust to outliers \\
+\hline
+\end{tabularx}
+
+\subsubsection*{XGBoost -- Classification}
+\begin{tabularx}{\textwidth}{@{}p{0.4\textwidth}Y@{}}
+\hline
+\textbf{Metric} & \textbf{What it measures} \\
+\hline
+F1-score & Average F1 per class and per fault \\
+Precision / Recall & Trade-off between false alarms and missed faults \\
+AUC-ROC & Threshold-independent separation \\
+Confusion Matrix & Complete picture of misclassifications \\
+\hline
+\end{tabularx}
+
+\subsubsection*{HMM + LSTM -- Fault Forecasting}
+\begin{tabularx}{\textwidth}{@{}p{0.4\textwidth}Y@{}}
+\hline
+\textbf{Metric} & \textbf{What it measures} \\
+\hline
+Lead time & How early a fault is predicted (in minutes/hours); target: $\geq 2$ h, as in Baruah et al. \\
+F1 & F1-score for each forecasting horizon (1 h, 6 h, 24 h) separately \\
+False Alarm Rate & $\mathrm{FP}/(\mathrm{FP}+\mathrm{TN})$; critical for preventing alarm fatigue among operators \\
+Early Detection Rate & Percentage of faults detected before they occur \\
+\hline
+\end{tabularx}
+
+\subsubsection*{PV-DA -- Degradation}
+\begin{tabularx}{\textwidth}{@{}p{0.4\textwidth}Y@{}}
+\hline
+\textbf{Metric} & \textbf{What it measures} \\
+\hline
+RUL MAE & Mean Absolute Error in the Remaining Useful Life estimate \\
+PR trend $R^2$ & How well the linear trend explains the weather-normalized PR \\
+\hline
+\end{tabularx}
+
+\subsection*{Cross-Validation}
+\begin{itemize}
+    \item \textbf{CS-LSTM:} Time-series cross-validation with an expanding window. Standard k-fold is not used because it breaks temporal order. For example: Train [2015], Val [2016 Q1]; Train [2015--2016 Q1], Val [2016 Q2]; etc., over 4 folds.
+    \item \textbf{XGBoost:} $k=5$, preserving chronological order in each fold. SMOTE is applied within each training fold, not to the validation fold.
+    \item \textbf{Early stopping:} Used for both CS-LSTM and the LSTM head.
+\end{itemize}
+
+\end{document}
