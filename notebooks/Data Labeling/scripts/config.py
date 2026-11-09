@@ -12,6 +12,7 @@ class SiteConfig:
     gamma: float
     t_stc: float
     n_strings: int
+    core_strings: tuple[int, ...]
 
     op_mask_columns: tuple[str, ...]
     op_mask_agg: str
@@ -32,6 +33,7 @@ CANOPY = SiteConfig(
     gamma=-0.00485,
     t_stc=25.0,
     n_strings=7,
+    core_strings=(2, 3, 4, 5, 6),
     op_mask_columns=(
         "Pyra1_Wm2_Avg",
         "Pyra3_Wm2_Avg",
@@ -55,6 +57,7 @@ GROUND = SiteConfig(
     gamma=-0.00485,
     t_stc=25.0,
     n_strings=7,
+    core_strings=(1, 2, 3, 4, 5, 6, 7),
     op_mask_columns=("Pyra2_Wm2_Avg",),
     op_mask_agg="single",
     poa_columns=("RefCell1_Wm2_Avg",),
@@ -85,5 +88,23 @@ OPEN_CIRCUIT_RATIO = 0.10
 
 INV_EFFICIENCY_MIN = 0.85
 
-# Canonical shutdown rule is not yet decided.
-INV_SHUTDOWN_POWER = 0.05
+# Inverter shutdown
+INV_SHUTDOWN_POWER = 1.0
+INV_SHUTDOWN_POWER_COLUMN = "InvPDC_kW_Avg"
+
+INV_NORMAL_STATUS_MIN = 1
+INV_NORMAL_STATUS_MAX = 5
+
+# Efficiency evaluation
+INV_EFFICIENCY_MIN = 0.85
+INV_EFFICIENCY_MIN_PDC_KW = 5.0
+INV_MIN_LOADING_RATIO = 0.20
+INV_EFFICIENCY_MAX = 1.0
+
+# Inverter self-reported fault codes:
+# A nonzero value indicates a reported fault.
+INV_FAULT_FLAG_NONZERO = True
+
+# String imbalance
+STRING_REL_DEV_THRESHOLD = 0.20
+OPEN_CIRCUIT_RATIO = 0.10
