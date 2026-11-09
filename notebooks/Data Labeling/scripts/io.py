@@ -122,6 +122,11 @@ def validate_site_year(
 ) -> None:
     """Reject datasets containing incorrect timestamps."""
 
+    if df.empty:
+        raise ValueError(
+            f"Dataset for {year} is empty"
+    )
+    
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError("Index must be a DatetimeIndex")
 
