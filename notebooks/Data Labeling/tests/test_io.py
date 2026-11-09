@@ -17,24 +17,41 @@ def test_data_root(tmp_path, monkeypatch):
     assert get_data_root() == tmp_path
 
 
+
 def test_daily_merge(tmp_path):
-    source = tmp_path / "daily"
-    source.mkdir()
+    source = tmp_path / "onemin-Canopy-2015"
+    january = source / "01"
+    february = source / "02"
+
+    january.mkdir(parents=True)
+    february.mkdir(parents=True)
 
     pd.DataFrame({"value": [1, 2]}).to_csv(
-        source / "day1.csv", index=False
+        january / "day01.csv", index=False
     )
     pd.DataFrame({"value": [3, 4]}).to_csv(
-        source / "day2.csv", index=False
+        january / "day02.csv", index=False
+    )
+    pd.DataFrame({"value": [5, 6]}).to_csv(
+        february / "day01.csv", index=False
     )
 
-    assert count_daily_files(source) == 2
+    counts = count_daily_files(source)
+
+    assert counts == {
+        "01": 2,
+        "02": 1,
+    }
 
     output = tmp_path / "merged.csv"
+
     merge_daily_csvs(source, output)
 
     result = pd.read_csv(output)
-    assert result["value"].tolist() == [1, 2, 3, 4]
+
+    assert result["value"].tolist() == [
+        1, 2, 3, 4, 5, 6
+    ]
 
 
 def test_ground_2017_rejects_2016_data(

@@ -30,43 +30,88 @@ def get_data_root() -> Path:
     return root
 
 
-def count_daily_files(base: str | Path) -> int:
-    """Count CSV files directly inside a directory."""
 
+from pathlib import Path
+
+import pandas as pd
+
+
+def count_daily_files(base: str | Path) -> dict[str, int]:
+    """
+    Count daily CSV files in each monthly subdirectory.
+
+    Example:
+        base = NIST/onemin-Canopy-2015/
+
+    Returns:
+        {"01": 31, "02": 28, ...}
+    """
     base = Path(base)
 
     if not base.is_dir():
         raise NotADirectoryError(base)
 
-    return sum(1 for path in base.glob("*.csv")
-               if path.is_file())
+    counts = {}
+
+    for month_dir in sorted(base.iterdir()):
+        if not month_dir.is_dir():
+            continue
+
+        csv_files = sorted(month_dir.glob("*.csv"))
+        counts[month_dir.name] = len(csv_files)
+
+    return counts
 
 
 def merge_daily_csvs(
     base: str | Path,
     out: str | Path,
 ) -> Path:
-    """Merge daily CSVs with one pandas concatenation."""
+    """
+    Merge daily CSVs from monthly subdirectories.
 
+    Preserves the original notebook's ordering:
+    month -> daily filename.
+    """
     base = Path(base)
     out = Path(out)
 
     if not base.is_dir():
         raise NotADirectoryError(base)
 
-    files = sorted(
-        path for path in base.glob("*.csv")
-        if path.is_file() and path.resolve() != out.resolve()
+    csv_files = []
+
+    for month_dir in sorted(base.iterdir()):
+        if not month_dir.is_dir():
+            continue
+
+        for csv_path in sorted(month_dir.glob("*.csv")):
+            csv_files.append(csv_path)
+
+    if not csv_files:
+        raise ValueError(
+            f"No daily CSV files found in {base}"
+        )
+
+    frames = [
+        pd.read_csv(csv_path)
+        for csv_path in csv_files
+    ]
+
+    combined_df = pd.concat(
+        frames,
+        ignore_index=True,
     )
 
-    if not files:
-        raise ValueError(f"No CSV files found in {base}")
+    out.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    frames = [pd.read_csv(path) for path in files]
-    merged = pd.concat(frames, ignore_index=True)
-
-    out.parent.mkdir(parents=True, exist_ok=True)
-    merged.to_csv(out, index=False)
+    combined_df.to_csv(
+        out,
+        index=False,
+    )
 
     return out
 
