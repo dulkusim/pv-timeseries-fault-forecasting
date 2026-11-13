@@ -90,7 +90,7 @@ def rtd_report(df: pd.DataFrame) -> pd.DataFrame:
 
 def detect_faulty_rtds(
     df: pd.DataFrame,
-    tol: float = 10.0,
+    tol: float = 3.0,
 ) -> list[str]:
     """
     Detect RTDs with unusually different annual means.
