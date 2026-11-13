@@ -1,0 +1,65 @@
+[project]
+name = "pv-timeseries-fault-forecasting"
+version = "0.1.0"
+description = "PV fault forecasting and degradation analysis on NIST one-minute time series (diploma thesis)."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+# Keep in sync with requirements.txt.
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "matplotlib>=3.8",
+    "scikit-learn>=1.4",
+    "torch>=2.2",
+    "xgboost>=2.0",
+    "ipython>=8.0",
+]
+
+# Development tools: `pip install --group dev` (pip >= 25.1) or `uv sync`.
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+# ---------------------------------------------------------------- pytest ----
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]  # lets tests import the top-level `scripts` package
+
+# ------------------------------------------------------------------ ruff ----
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+src = ["."]
+extend-exclude = [
+    "notebooks/**/legacy",  # preserved reference notebooks, not maintained
+]
+# Lint/format .ipynb files too (default in recent ruff versions).
+extend-include = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "I",       # isort
+    "B",       # flake8-bugbear
+    "UP",      # pyupgrade
+    "C4",      # flake8-comprehensions
+    "SIM",     # flake8-simplify
+    "NPY",     # numpy-specific
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Exploratory notebooks: imports mid-notebook, long markdown/print lines,
+# bare expressions used to display values.
+"*.ipynb" = ["E402", "E501", "B018"]
+# Tests may use assert and unused fixtures freely.
+"tests/**" = ["B011"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["scripts"]
+
+[tool.ruff.format]
+docstring-code-format = true
