@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .regression import BASE, BASELINES, digest
+from .regression import BASE, BASELINES, REPO_ROOT, digest
 
 
 def cleanup(results):
@@ -27,7 +27,7 @@ def cleanup(results):
             raise ValueError(f"Historical notebook changed since baseline extraction: {source.name}")
     if manifest["table_sha256"] != digest(results / "regression_table.csv"):
         raise ValueError("Regression table changed since the run")
-    scripts = {p.name: digest(p) for p in sorted((BASE / "scripts").glob("*.py"))}
+    scripts = {p.name: digest(p) for p in sorted((REPO_ROOT / "scripts").glob("*.py"))}
     if manifest["scripts_sha256"] != scripts:
         raise ValueError("Scripts changed since regression; rerun the check")
     table = pd.read_csv(results / "regression_table.csv")
