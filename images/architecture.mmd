@@ -1,0 +1,51 @@
+
+flowchart TB
+    subgraph DATA["DATA ENGINEERING"]
+        direction LR
+        A["NIST Raw Daily CSVs<br/>2015–2018"]
+        B["Annual Merged CSVs<br/>Data_Overview/"]
+        C["Labeling Pipeline<br/>scripts/"]
+        D["Labeled Dataset<br/>Power | String | Inverter"]
+        A --> B --> C --> D
+    end
+
+    subgraph CORE["SHARED MODELING PIPELINE"]
+        direction TB
+        E["Stage 1: CS-LSTM<br/>Healthy Behavior Regression"]
+        F["Power Residuals<br/>Actual - Predicted"]
+        G["Stage 2: XGBoost<br/>Fault Detection & Classification"]
+        H["Fault Probabilities<br/>Binary | Multiclass | Impending"]
+        E --> F --> G --> H
+    end
+
+    subgraph FF["PV-FF: FAULT FORECASTING"]
+        direction TB
+        I["HMM<br/>Hidden State Estimation"]
+        J["LSTM Forecasting"]
+        K["1h | 6h | 24h<br/>Fault Probabilities"]
+        I --> J --> K
+    end
+
+    subgraph DA["PV-DA: DEGRADATION ANALYSIS"]
+        direction TB
+        L["STL Decomposition"]
+        M["Reliability Score<br/>Health Trend"]
+        N["Degradation Rate<br/>Remaining Useful Life"]
+        L --> M --> N
+    end
+
+    D --> E
+    D --> G
+    D --> L
+    F --> L
+    H --> I
+    F --> I
+    F --> J
+
+    classDef done fill:#DCFCE7,stroke:#16A34A,color:#14532D,stroke-width:2px
+    classDef planned fill:#DBEAFE,stroke:#2563EB,color:#1E40AF,stroke-width:2px
+    classDef artifact fill:#F3F4F6,stroke:#6B7280,color:#111827
+
+    class B,C,D done
+    class E,G,I,J,L,M,N planned
+    class A,F,H,K artifact

@@ -4,7 +4,15 @@
 
 Diploma thesis project exploring photovoltaic (PV) fault forecasting and degradation trends using electrical and weather time series. This guide covers data preparation and rule-based labeling for the NIST Canopy and Ground installations, using one-minute measurements from 2015–2018.
 
-The architecture, scope and methodology of the thesis are described in [docs/main.tex](docs/main.tex).
+![Architecture](images/architecture.svg)
+
+Green boxes show implemented data preparation and labeling. Blue boxes show notebook prototypes. Dashed amber boxes show planned work. See the [architecture notes](docs/architecture.md) for the detailed labeling and CS-LSTM diagrams.
+
+### Chronological split
+
+![Chronological split: 2015–2016 training, 2017 validation, 2018 final test](images/chronological_split.svg)
+
+Use 2015–2016 for training, 2017 for validation and model selection, and 2018 for the final held-out test.
 
 The workflow runs in **Google Colab**, with input data and results stored in **Google Drive**. You do not need a local Python installation or a local copy of the datasets to run the notebooks.
 
