@@ -35,24 +35,14 @@ from .inverter import (
 )
 
 
-def _append(df, *features):
-    """Append a batch of newly calculated columns."""
+from .reporting import append_features
 
-    new_columns = pd.concat(features, axis=1)
-
-    duplicates = df.columns.intersection(
-        new_columns.columns
-    )
-
-    if len(duplicates):
-        raise ValueError(
-            f"Columns already exist: {duplicates.tolist()}"
-        )
-
-    return pd.concat(
-        [df, new_columns],
-        axis=1,
-    )
+STAGES = (
+    "secondary", "redundant", "rtd", "missing", "bounds", "operating",
+    "poa", "temperature", "pr_mask", "expected", "performance", "round",
+    "power_labels", "aggregates", "voltage", "normalized", "baselines",
+    "string_labels", "inverter", "inverter_labels",
+)
 
 
 def run_labeling(
@@ -63,115 +53,63 @@ def run_labeling(
     core_strings: tuple[int, ...] | None = None,
     inverter_policy: InverterPolicy = REVISED_INVERTER_POLICY,
     missing_power_label: str = "MISSING_DATA",
+    stages: tuple[str, ...] = STAGES,
 ) -> pd.DataFrame:
-    """Run the complete PV fault-labeling pipeline."""
+    """Run all stages or explicitly selected stages for the thesis notebook.
 
-    # 1. Feature selection and cleaning
-    result = drop_features(df)
-    result = drop_legacy_rtds(result, site)
-    result = apply_missingness_policy(result)
-    result = clean_string_bounds(result)
-
-    # 2. Operating features
-    result = _append(
-        result,
-        operating_mask(result, site),
-        poa_fused(result, site),
-        module_temp(result, site),
-    )
-
-    result = _append(
-        result,
-        pr_evaluable(result, site),
-    )
-
-    # 3. Expected power and PR features
-    result = _append(
-        result,
-        expected_power(result, site),
-    )
-
-    result = _append(
-        result,
-        performance_features(result),
-    )
-
-    # Preserve the original notebook's rounding.
-    round_columns = [
-        "module_temp",
-        "P_expected_DC_kW",
-        "P_expected_AC_kW",
-        "PR",
-        "PR_roll_5min_weighted",
-        "PR_roll_15min_weighted",
-        "PR_roll_60min_weighted",
-        "PR_roll_std_15min",
-        "power_deficit_kW",
-    ]
-
-    result = result.assign(
-        **{
-            col: result[col].round(3)
-            for col in round_columns
-        }
-    )
-
-    result = _append(
-        result,
-        label_power(
-            result,
-            missing_label=missing_power_label,
-        ),
-    )
-
-    # 4. String-level features
-    result = _append(
-        result,
-        string_aggregates(result),
-        string_voltage_proxy(result),
-        string_normalized(result),
-    )
-
-    if baselines is None:
-        baselines = fit_string_baselines(result, site)
-
-    result = _append(
-        result,
-        apply_string_baselines(result, baselines),
-    )
-
-    if core_strings is None:
-        if site.name.lower() == "canopy":
-            core_strings = (2, 3, 4, 5, 6)
-        else:
-            core_strings = tuple(range(1, site.n_strings + 1))
-        
-    result = _append(
-        result,
-        label_string(
-            result,
-            core_strings=core_strings,
-        ),
-    )
-
-    # 5. Inverter features and labels
-    result = _append(
-        result,
-        inverter_features(
-            result,
-            site,
-            policy=inverter_policy,
-        ),
-    )
-
-    result = _append(
-        result,
-        label_inverter(
-            result,
-            policy=inverter_policy,
-        ),
-    )
-
+    Selected stages must follow STAGES order and require the preceding features
+    to be present. This is the single implementation used by interactive and
+    batch/regression workflows; no annual notebook contains label rules.
+    """
+    if not stages or any(stage not in STAGES for stage in stages):
+        raise ValueError(f"Unknown or empty stage selection: {stages}")
+    if list(stages) != sorted(set(stages), key=STAGES.index):
+        raise ValueError("Stages must be unique and in pipeline order")
+    core_strings = site.core_strings if core_strings is None else core_strings
+    result = df
+    for stage in stages:
+        if stage == "secondary":
+            result = drop_features(result, groups=("secondary",))
+        elif stage == "redundant":
+            result = drop_features(result, groups=("redundant",))
+        elif stage == "rtd":
+            result = drop_legacy_rtds(result, site)
+        elif stage == "missing":
+            result = apply_missingness_policy(result)
+        elif stage == "bounds":
+            result = clean_string_bounds(result)
+        elif stage in ("operating", "poa", "temperature", "pr_mask"):
+            function = {
+                "operating": operating_mask, "poa": poa_fused,
+                "temperature": module_temp, "pr_mask": pr_evaluable,
+            }[stage]
+            result = append_features(result, function(result, site).to_frame())
+        elif stage == "expected":
+            result = append_features(result, expected_power(result, site))
+        elif stage == "performance":
+            result = append_features(result, performance_features(result))
+        elif stage == "round":
+            columns = [
+                "module_temp", "P_expected_DC_kW", "P_expected_AC_kW", "PR",
+                "PR_roll_5min_weighted", "PR_roll_15min_weighted",
+                "PR_roll_60min_weighted", "PR_roll_std_15min", "power_deficit_kW",
+            ]
+            result = result.assign(**{col: result[col].round(3) for col in columns})
+        elif stage == "power_labels":
+            result = append_features(result, label_power(result, missing_label=missing_power_label).to_frame())
+        elif stage in ("aggregates", "voltage", "normalized"):
+            function = {"aggregates": string_aggregates, "voltage": string_voltage_proxy,
+                        "normalized": string_normalized}[stage]
+            result = append_features(result, function(result))
+        elif stage == "baselines":
+            fitted = fit_string_baselines(result, site) if baselines is None else baselines
+            result = append_features(result, apply_string_baselines(result, fitted))
+        elif stage == "string_labels":
+            result = append_features(result, label_string(result, core_strings=core_strings).to_frame())
+        elif stage == "inverter":
+            result = append_features(result, inverter_features(result, site, policy=inverter_policy))
+        elif stage == "inverter_labels":
+            result = append_features(result, label_inverter(result, policy=inverter_policy).to_frame())
     return result
 
 
