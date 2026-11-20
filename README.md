@@ -188,6 +188,17 @@ The [notebooks/](notebooks/) directory holds Jupyter notebooks. Shared code live
 
 The original annual notebooks are preserved in [legacy/](notebooks/Data%20Labeling/legacy/) for reference.
 
+### Notebook outputs
+
+Before committing a notebook, clear saved outputs and execution counts with
+`nbstripout --keep-id "<notebook-path>"`. Install it with the development
+dependencies. This also clears transient execution and widget metadata.
+
+Keep the saved results in `Site_Year_Labeling_Walkthrough.ipynb` and leave
+the notebooks in `notebooks/Data Labeling/legacy/` untouched. Historical
+regression uses their saved label counts and source hashes. The root pytest
+suite checks the output policy for tracked notebooks.
+
 ## Data attribution and license
 
 When using the NIST data, cite the dataset as requested by its provider:

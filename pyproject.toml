@@ -19,6 +19,7 @@ dependencies = [
 # Development tools: `pip install --group dev` (pip >= 25.1) or `uv sync`.
 [dependency-groups]
 dev = [
+    "nbstripout>=0.8",
     "pytest>=8.0",
     "ruff>=0.6",
 ]
