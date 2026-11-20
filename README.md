@@ -10,7 +10,7 @@ Green boxes show implemented data preparation and labeling. Blue boxes show note
 
 ### Chronological split
 
-![Chronological split: 2015–2016 training, 2017 validation, 2018 final test](images/chronological_split.svg)
+![Chronological split: 2015–2016 training, 2017 validation, 2018 final test](images/chronological_split.png)
 
 Use 2015–2016 for training, 2017 for validation and model selection, and 2018 for the final held-out test.
 
