@@ -1,4 +1,4 @@
-"""Historical label-count regression. Run from the Data Labeling directory.
+"""Historical label-count regression. Run from the repository root.
 
 python -m scripts.regression --output /content/drive/MyDrive/NIST_regression
 python -m scripts.regression --extract-baselines
@@ -19,9 +19,10 @@ from .io import load_site_year
 from .labeling import run_labeling, summarize
 from .qa import check_year_coverage, check_sentinels
 
-BASE = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[1]
+BASE = REPO_ROOT / "notebooks" / "Data Labeling"
 LABELS = ("label_power", "label_string", "label_inverter")
-BASELINES = BASE / "regression" / "legacy_counts.json"
+BASELINES = REPO_ROOT / "regression" / "legacy_counts.json"
 
 
 def digest(path):
@@ -164,7 +165,7 @@ def run_regression(output, reviews_path=None):
         "passed": passed, "policy": "ORIGINAL_INVERTER_POLICY",
         "datasets": 8, "baseline_sha256": digest(BASELINES),
         "table_sha256": digest(output / "regression_table.csv"),
-        "scripts_sha256": {p.name: digest(p) for p in sorted((BASE / "scripts").glob("*.py"))},
+        "scripts_sha256": {p.name: digest(p) for p in sorted((REPO_ROOT / "scripts").glob("*.py"))},
     }
     (output / "result.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return table, passed
@@ -173,7 +174,7 @@ def run_regression(output, reviews_path=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--extract-baselines", action="store_true")
-    parser.add_argument("--output", type=Path, default=BASE / "regression" / "results")
+    parser.add_argument("--output", type=Path, default=REPO_ROOT / "regression" / "results")
     parser.add_argument("--reviews", type=Path, help="JSON list of count-specific reviewed mismatch explanations")
     args = parser.parse_args()
     if args.extract_baselines:

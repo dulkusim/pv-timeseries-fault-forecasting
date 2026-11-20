@@ -117,10 +117,13 @@ def test_cleanup_only_removes_named_notebooks_after_verified_pass(tmp_path, monk
     from scripts import cleanup_legacy
     from scripts.regression import digest
 
-    base = tmp_path / "repository" / "Data Labeling"
+    repo = tmp_path / "repository"
+    base = repo / "notebooks" / "Data Labeling"
     results = tmp_path / "results"
-    (base / "scripts").mkdir(parents=True)
-    (base / "legacy").mkdir()
+    (repo / "scripts").mkdir(parents=True)
+    script = repo / "scripts" / "labeling.py"
+    script.write_text("# Shared labeling code\n")
+    (base / "legacy").mkdir(parents=True)
     results.mkdir()
     baseline = base / "counts.json"
     baseline.write_text("[]")
@@ -140,9 +143,10 @@ def test_cleanup_only_removes_named_notebooks_after_verified_pass(tmp_path, monk
     table.to_csv(results / "regression_table.csv", index=False)
     (results / "result.json").write_text(json.dumps({
         "passed": True, "datasets": 8, "policy": "ORIGINAL_INVERTER_POLICY",
-        "baseline_sha256": digest(baseline), "scripts_sha256": {},
+        "baseline_sha256": digest(baseline), "scripts_sha256": {script.name: digest(script)},
         "table_sha256": digest(results / "regression_table.csv"),
     }))
+    monkeypatch.setattr(cleanup_legacy, "REPO_ROOT", repo)
     monkeypatch.setattr(cleanup_legacy, "BASE", base)
     monkeypatch.setattr(cleanup_legacy, "BASELINES", baseline)
     cleanup_legacy.cleanup(results)
