@@ -4,7 +4,7 @@ import pandas as pd
 from scripts.cleaning import (
     missing_report,
     drop_high_missing,
-    drop_legacy_missing,
+    apply_missingness_policy,
 )
 
 
@@ -44,7 +44,7 @@ def test_legacy_missing():
         "InvPAC_kW_Avg": [100.0],
     })
 
-    result = drop_legacy_missing(df)
+    result = apply_missingness_policy(df)
 
     assert result.columns.tolist() == [
         "InvPAC_kW_Avg"
