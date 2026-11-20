@@ -1,0 +1,12 @@
+# Runtime dependencies for the labeling scripts and the forecasting notebooks.
+# Install with: pip install -r requirements.txt
+# Keep in sync with [project].dependencies in pyproject.toml.
+# Google Colab already ships most of these; a local install is only needed for
+# running the tests/linter or working outside Colab.
+numpy>=1.26
+pandas>=2.1
+matplotlib>=3.8
+scikit-learn>=1.4
+torch>=2.2
+xgboost>=2.0
+ipython>=8.0

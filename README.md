@@ -2,6 +2,8 @@
 
 Diploma thesis project exploring photovoltaic (PV) fault forecasting and degradation trends using electrical and weather time series. This guide covers data preparation and rule-based labeling for the NIST Canopy and Ground installations, using one-minute measurements from 2015–2018.
 
+The architecture, scope and methodology of the thesis are described in [docs/main.tex](docs/main.tex).
+
 The workflow runs in **Google Colab**, with input data and results stored in **Google Drive**. You do not need a local Python installation or a local copy of the datasets to run the notebooks.
 
 ## Workflow at a glance
