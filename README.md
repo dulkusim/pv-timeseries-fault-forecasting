@@ -16,6 +16,15 @@ Use 2015–2016 for training, 2017 for validation and model selection, and 2018 
 
 The workflow runs in **Google Colab**, with input data and results stored in **Google Drive**. You do not need a local Python installation or a local copy of the datasets to run the notebooks.
 
+## Status
+
+| Component | Status | References |
+|---|---|---|
+| Data preparation and rule-based labeling | Done | [Labeling guide](docs/data-labeling.md) · [Data labeling milestone](https://github.com/dulkusim/pv-timeseries-fault-forecasting/milestone/1) |
+| Stage 1 CS-LSTM regression | Notebook prototype | [CS-LSTM training notebook](notebooks/Fault%20Forecasting/CS_LSTM_Training.ipynb) · [Forecasting restructure milestone](https://github.com/dulkusim/pv-timeseries-fault-forecasting/milestone/3) |
+| Stage 2 XGBoost | Binary classification prototype. Multiclass and fault-impending detection are planned. | [XGBoost notebook](notebooks/Fault%20Forecasting/XGBoost.ipynb) · [Forecasting restructure milestone](https://github.com/dulkusim/pv-timeseries-fault-forecasting/milestone/3) |
+| Stage 3 PV-FF and PV-DA heads | Planned | [Architecture notes](docs/architecture.md) · [Project milestones](https://github.com/dulkusim/pv-timeseries-fault-forecasting/milestones) |
+
 ## Workflow at a glance
 
 1. Download the NIST one-minute data.
@@ -171,6 +180,33 @@ All selected merged input files must exist. The notebook processes one site/year
 | Clone fails or scripts are missing | Confirm access to the public repository. Restart the runtime to clone updated scripts. |
 | An output already exists | Choose whether to retain it or enable the appropriate final-output overwrite setting. Checkpoints have separate protection. |
 | Colab runs out of RAM | A CSV's in-memory size can exceed its disk size substantially. Use a runtime with more RAM if necessary; keeping checkpoints off reduces Drive usage, not peak calculation memory. |
+
+## Development
+
+From the repository root, create a virtual environment with Python 3.10 or newer. CI runs on Python 3.10 and 3.12.
+
+```sh
+python -m venv .venv
+source .venv/bin/activate
+```
+
+On Windows PowerShell, activate it with `./.venv/Scripts/Activate.ps1`.
+
+Install the runtime and development dependencies. The `--group` option requires pip 25.1 or newer.
+
+```sh
+python -m pip install --upgrade "pip>=25.1"
+pip install -r requirements.txt
+pip install --group dev
+```
+
+Run linting, apply formatting, and run the tests from the repository root.
+
+```sh
+ruff check .
+ruff format .
+pytest
+```
 
 ## Code organization
 
