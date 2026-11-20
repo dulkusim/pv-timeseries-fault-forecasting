@@ -173,7 +173,7 @@ All selected merged input files must exist. The notebook processes one site/year
 
 ## Code organization
 
-Shared code lives in [notebooks/Data Labeling/scripts/](notebooks/Data%20Labeling/scripts/):
+The [notebooks/](notebooks/) directory holds Jupyter notebooks. Shared code lives in [scripts/](scripts/). Run the [test suite](tests/) from the repository root with `pytest`. See the [data labeling guide](docs/data-labeling.md) for the regression workflow.
 
 | Module | Responsibility |
 |---|---|

@@ -1,11 +1,11 @@
 # Data preparation and labeling
 
-Start with the [project guide](../../README.md) for the NIST download links and Google Drive folder layout. This directory contains one canonical labeling notebook, one preparation notebook, and a shared `scripts/` package.
+Start with the [project guide](../README.md) for the NIST download links and Google Drive folder layout. The labeling and preparation notebooks use the shared [`scripts/` package](../scripts/).
 
 ## Run in Colab
 
-1. Open [Data_Overview.ipynb](Data_Overview.ipynb). Clone the repository, mount Drive, inspect daily file counts and merge the extracted daily CSVs. Inputs are under `MyDrive/NIST/`; outputs are under `MyDrive/NIST_processed/`.
-2. Open [Data_Labeling.ipynb](Data_Labeling.ipynb). Set `SITE = "canopy"` or `"ground"` and `YEAR = 2015`, `2016`, `2017` or `2018`. Run cells in order to inspect every stage of the thesis methodology.
+1. Open [Data_Overview.ipynb](../notebooks/Data%20Labeling/Data_Overview.ipynb). Clone the repository, mount Drive, inspect daily file counts and merge the extracted daily CSVs. Inputs are under `MyDrive/NIST/`; outputs are under `MyDrive/NIST_processed/`.
+2. Open [Data_Labeling.ipynb](../notebooks/Data%20Labeling/Data_Labeling.ipynb). Set `SITE = "canopy"` or `"ground"` and `YEAR = 2015`, `2016`, `2017` or `2018`. Run cells in order to inspect every stage of the thesis methodology.
 3. Inspect the final labels and export to `MyDrive/NIST_Labels/`. Final outputs are protected unless `OVERWRITE_FINAL` is enabled. Intermediate checkpoints are optional.
 
 The detailed notebook calls named stages of `run_labeling`; the full pipeline and interactive walkthrough share the same implementation. Feature selection, cleaning, performance ratios, string analysis and inverter analysis remain separately explained and displayed. Reporting functions are in `scripts/reporting.py`.
@@ -22,14 +22,14 @@ The notebook runs input QA before processing and displays the inverter cross-che
 
 ## Historical regression: all eight datasets
 
-Saved outputs from the original annual notebooks were extracted into [regression/legacy_counts.json](regression/legacy_counts.json). Each count has a source notebook, output-cell index and SHA-256 hash (with CRLF normalized to LF for Windows/Colab compatibility). The three label families have matching historical row totals within each dataset. There are 125 saved count records across all eight site/year combinations.
+Saved outputs from the original annual notebooks were extracted into [regression/legacy_counts.json](../regression/legacy_counts.json). Each count has a source notebook, output-cell index and SHA-256 hash (with CRLF normalized to LF for Windows/Colab compatibility). The three label families have matching historical row totals within each dataset. There are 125 saved count records across all eight site/year combinations.
 
-The checked-in [regression table](regression/regression_report.md) is explicitly **NOT RUN** until actual annual data is supplied. Synthetic tests do not establish agreement with historical outputs.
+The checked-in [regression table](../regression/regression_report.md) is explicitly **NOT RUN** until actual annual data is supplied. Synthetic tests do not establish agreement with historical outputs.
 
 Prepare all eight merged inputs, then run this in Colab after mounting Drive:
 
 ```python
-%cd "/content/pv-timeseries-fault-forecasting/notebooks/Data Labeling"
+%cd "/content/pv-timeseries-fault-forecasting"
 !python -m scripts.regression --output /content/drive/MyDrive/NIST_regression
 ```
 
@@ -64,7 +64,7 @@ Every other nonzero difference starts as `UNEXPLAINED` and fails regression. Inv
 
 The example is not an approved exception or an observed new result. Pass your reviewed file with `--reviews /path/to/reviews.json`. A waiver applies only to those exact counts, so later count changes require fresh investigation. Save the review file with the PR.
 
-Copy the generated CSV and Markdown report into this directory's `regression/` folder for the PR, replacing the pending artifacts. Include the coverage report and result manifest as validation evidence. The full dataset regression has not been run merely because a report template or baseline exists.
+Copy the generated CSV and Markdown report into the repository's [`regression/` directory](../regression/) for the PR, replacing the pending artifacts. Include the coverage report and result manifest as validation evidence. The full dataset regression has not been run merely because a report template or baseline exists.
 
 ## Replace the legacy notebooks after a passing check
 
@@ -82,10 +82,10 @@ In Colab these deletions affect the runtime checkout only. Include the correspon
 
 ## Tests
 
-From this directory, run:
+From the repository root, run:
 
 ```text
-python -m pytest tests -q
+pytest -q
 ```
 
 Tests use synthetic measurements and the saved notebook outputs; annual Drive CSVs are not needed. They cover wrong-year rejection, timezone-aware normal/leap-year coverage, real gaps and duplicates, sentinel handling, boolean precedence, stage/full-pipeline equivalence, and historical count extraction/comparison.
