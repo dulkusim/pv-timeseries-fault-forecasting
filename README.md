@@ -1,5 +1,7 @@
 # PV Time-Series Fault Forecasting
 
+[![CI](https://github.com/dulkusim/pv-timeseries-fault-forecasting/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dulkusim/pv-timeseries-fault-forecasting/actions/workflows/ci.yml)
+
 Diploma thesis project exploring photovoltaic (PV) fault forecasting and degradation trends using electrical and weather time series. This guide covers data preparation and rule-based labeling for the NIST Canopy and Ground installations, using one-minute measurements from 2015–2018.
 
 The architecture, scope and methodology of the thesis are described in [docs/main.tex](docs/main.tex).
