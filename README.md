@@ -69,23 +69,14 @@ Open [Data_Overview.ipynb](notebooks/Data%20Labeling/Data_Overview.ipynb), or [l
 
 Run the setup cells in order. They clone this repository into the Colab runtime, import the shared scripts and mount Google Drive. Authorize Drive access when Colab prompts you. The repository supplies the code; your Drive supplies the data.
 
-**Check the output folder before running the merge cell.** The current overview notebook sets `output_path` to `NIST_Labeling`, while the labeling loader expects `NIST_processed`. Use the following paths in the overview's Drive/path cell to connect the two steps:
-
-```python
-os.environ["DATA_ROOT"] = "/content/drive/MyDrive"
-root = get_data_root()
-base_path = root / "NIST"
-output_path = root / "NIST_processed"
-```
-
-The notebook counts daily CSVs in each monthly folder, then merges each dataset in sorted month/filename order. It creates outputs such as:
+The notebook counts daily CSVs under `MyDrive/NIST/` and merges each dataset in sorted month/filename order. It writes the annual CSVs to `MyDrive/NIST_processed/`, where the labeling notebooks read them. Example outputs:
 
 ```text
 My Drive/NIST_processed/onemin-Canopy-2015.csv
 My Drive/NIST_processed/onemin-Ground-2015.csv
 ```
 
-The output directory is created automatically. Rerunning the merge cell **overwrites the corresponding annual CSVs**. If you already merged into `NIST_Labeling`, you can move those annual CSVs into `NIST_processed` instead of merging again.
+The output directory is created automatically. Rerunning the merge cell **overwrites the corresponding annual CSVs**.
 
 File counts help identify incomplete downloads, but do not verify all timestamps or file contents. Timestamp checks follow in the labeling walkthrough.
 
@@ -118,7 +109,7 @@ The calculations use the shared scripts rather than repeated annual notebook cod
 
 ### Choose the inverter policy deliberately
 
-The walkthrough currently selects `REVISED_INVERTER_POLICY`. The batch notebook selects `ORIGINAL_INVERTER_POLICY`. Set the same policy in both if you want comparable results.
+The walkthrough, batch notebook, and `Data_Labeling.ipynb` all default to `REVISED_INVERTER_POLICY`. Select `ORIGINAL_INVERTER_POLICY` to reproduce the historical inverter rules. The historical regression script uses the original policy.
 
 | Rule | Original | Revised |
 |---|---|---|
@@ -167,7 +158,7 @@ All selected merged input files must exist. The notebook processes one site/year
 | Problem | What to check |
 |---|---|
 | Raw dataset directory not found | Confirm that `NIST/` is directly under My Drive and Drive is mounted. |
-| Merged input file not found | Check that the CSV is in `NIST_processed/`, with the exact site/year filename. See the overview output-path setting above. |
+| Merged input file not found | Check that the CSV is in `NIST_processed/`, with the exact site/year filename. |
 | No daily CSV files found | Check that archives are extracted and daily CSVs are inside monthly folders, without an extra nesting level. |
 | Clone fails or scripts are missing | Confirm access to the public repository. Restart the runtime to clone updated scripts. |
 | An output already exists | Choose whether to retain it or enable the appropriate final-output overwrite setting. Checkpoints have separate protection. |
@@ -188,7 +179,7 @@ The [notebooks/](notebooks/) directory holds Jupyter notebooks. Shared code live
 | `reporting.py` | Notebook reporting utilities |
 | `labeling.py` | Complete pipeline and final label summaries |
 
-The original annual notebooks are preserved in [legacy/](notebooks/Data%20Labeling/legacy/) for reference.
+[legacy/](notebooks/Data%20Labeling/legacy/) contains the eight original Canopy and Ground annual labeling notebooks for 2015–2018 and the archived `Data_Overview(1).ipynb`. Historical regression uses the saved outputs from the eight annual notebooks.
 
 ### Notebook outputs
 
