@@ -10,6 +10,8 @@ Start with the [project guide](../README.md) for the NIST download links and Goo
 
 The detailed notebook calls named stages of `run_labeling`; the full pipeline and interactive walkthrough share the same implementation. Feature selection, cleaning, performance ratios, string analysis and inverter analysis remain separately explained and displayed. Reporting functions are in `scripts/reporting.py`.
 
+The canonical, walkthrough, and batch notebooks default to `REVISED_INVERTER_POLICY`. Select `ORIGINAL_INVERTER_POLICY` to use the historical inverter rules.
+
 ## Quality checks
 
 `scripts/qa.py` provides:
