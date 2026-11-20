@@ -43,7 +43,9 @@ def report_stage(
 def label_distribution(labels: pd.Series) -> pd.DataFrame:
     """Report label counts and percentages, including missing labels."""
     counts = labels.value_counts(dropna=False)
-    return pd.DataFrame({
-        "count": counts,
-        "percent_of_all_rows": 100 * counts / len(labels),
-    })
+    return pd.DataFrame(
+        {
+            "count": counts,
+            "percent_of_all_rows": 100 * counts / len(labels),
+        }
+    )

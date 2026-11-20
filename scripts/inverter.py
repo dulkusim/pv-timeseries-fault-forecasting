@@ -5,7 +5,6 @@ import pandas as pd
 
 from .config import SiteConfig
 
-
 FAULT_FLAG_COLUMNS = (
     "InvMainFault_Max",
     "InvDriveFault_Max",
@@ -65,18 +64,12 @@ def inverter_features(
     else:
         active_flags = flags.gt(0)
 
-    evaluable = (
-        df["Op_Mask"].eq(1)
-        & df["POA_fused"].ge(100)
-    )
+    evaluable = df["Op_Mask"].eq(1) & df["POA_fused"].ge(100)
 
     status = df["InvOpStatus_Avg"]
 
-    shutdown_power = (
-        evaluable
-        & df[policy.shutdown_column].lt(
-            policy.shutdown_threshold
-        )
+    shutdown_power = evaluable & df[policy.shutdown_column].lt(
+        policy.shutdown_threshold
     )
 
     invalid_status = status.isna() | status.le(0)
@@ -86,32 +79,23 @@ def inverter_features(
 
     shutdown_status = evaluable & invalid_status
 
-    return pd.DataFrame({
-        "inv_efficiency": efficiency,
-        "inv_efficiency_clipped": efficiency_clipped,
-        "DC_power_discrepancy": discrepancy,
-        "DC_power_discrepancy_pct": (
-            discrepancy / pdc.replace(0, np.nan) * 100
-        ),
-        "inv_loading_ratio": pac / site.p_ac_max_kw,
-        "inv_any_fault_reported": (
-            active_flags.any(axis=1).astype(int)
-        ),
-        "inv_fault_count": (
-            active_flags.sum(axis=1).astype(int)
-        ),
-        "inv_efficiency_roll5": (
-            efficiency_clipped
-            .rolling(window=5, min_periods=3)
-            .mean()
-        ),
-        "inv_shutdown_power_flag": (
-            shutdown_power.astype(int)
-        ),
-        "inv_shutdown_status_flag": (
-            shutdown_status.astype(int)
-        ),
-    }, index=df.index)
+    return pd.DataFrame(
+        {
+            "inv_efficiency": efficiency,
+            "inv_efficiency_clipped": efficiency_clipped,
+            "DC_power_discrepancy": discrepancy,
+            "DC_power_discrepancy_pct": (discrepancy / pdc.replace(0, np.nan) * 100),
+            "inv_loading_ratio": pac / site.p_ac_max_kw,
+            "inv_any_fault_reported": (active_flags.any(axis=1).astype(int)),
+            "inv_fault_count": (active_flags.sum(axis=1).astype(int)),
+            "inv_efficiency_roll5": (
+                efficiency_clipped.rolling(window=5, min_periods=3).mean()
+            ),
+            "inv_shutdown_power_flag": (shutdown_power.astype(int)),
+            "inv_shutdown_status_flag": (shutdown_status.astype(int)),
+        },
+        index=df.index,
+    )
 
 
 def label_inverter(
@@ -120,20 +104,14 @@ def label_inverter(
 ) -> pd.Series:
     """Return inverter fault labels without modifying df."""
 
-    evaluable = (
-        df["Op_Mask"].eq(1)
-        & df["POA_fused"].ge(100)
-    )
+    evaluable = df["Op_Mask"].eq(1) & df["POA_fused"].ge(100)
 
     status = df["InvOpStatus_Avg"]
 
-    normal_operation = (
-        status.gt(0) & status.le(5)
-    )
+    normal_operation = status.gt(0) & status.le(5)
 
-    shutdown = (
-        df["inv_shutdown_power_flag"].eq(1)
-        | df["inv_shutdown_status_flag"].eq(1)
+    shutdown = df["inv_shutdown_power_flag"].eq(1) | df["inv_shutdown_status_flag"].eq(
+        1
     )
 
     efficiency_fault = (
@@ -141,18 +119,13 @@ def label_inverter(
         & normal_operation
         & ~shutdown
         & df["inv_efficiency_roll5"].lt(0.85)
-        & df["InvPDC_kW_Avg"].gt(
-            policy.efficiency_min_dc_kw
-        )
+        & df["InvPDC_kW_Avg"].gt(policy.efficiency_min_dc_kw)
         & df["inv_loading_ratio"].gt(0.20)
     )
 
     conditions = [
         df["Op_Mask"].eq(0),
-        (
-            df["InvPAC_kW_Avg"].isna()
-            | df["InvPDC_kW_Avg"].isna()
-        ),
+        (df["InvPAC_kW_Avg"].isna() | df["InvPDC_kW_Avg"].isna()),
         shutdown,
         efficiency_fault,
     ]

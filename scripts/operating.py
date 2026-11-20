@@ -1,7 +1,6 @@
-
 import pandas as pd
 
-from .config import SiteConfig, POA_MIN_OPERATING, POA_MIN_PR
+from .config import POA_MIN_OPERATING, POA_MIN_PR, SiteConfig
 
 
 def operating_mask(
@@ -15,13 +14,9 @@ def operating_mask(
     elif site.op_mask_agg == "single":
         irradiance = df[site.op_mask_columns[0]]
     else:
-        raise ValueError(
-            f"Unknown operating aggregation: {site.op_mask_agg}"
-        )
+        raise ValueError(f"Unknown operating aggregation: {site.op_mask_agg}")
 
-    return (irradiance > POA_MIN_OPERATING).astype(int).rename(
-        "Op_Mask"
-    )
+    return (irradiance > POA_MIN_OPERATING).astype(int).rename("Op_Mask")
 
 
 def poa_fused(
@@ -35,9 +30,7 @@ def poa_fused(
     elif site.poa_agg == "single":
         result = df[site.poa_columns[0]]
     else:
-        raise ValueError(
-            f"Unknown POA aggregation: {site.poa_agg}"
-        )
+        raise ValueError(f"Unknown POA aggregation: {site.poa_agg}")
 
     return result.rename("POA_fused")
 
@@ -48,10 +41,7 @@ def module_temp(
 ) -> pd.Series:
     """Median temperature from retained RTD sensors."""
 
-    columns = [
-        f"RTD_C_Avg_{i}"
-        for i in site.rtd_module_temp
-    ]
+    columns = [f"RTD_C_Avg_{i}" for i in site.rtd_module_temp]
 
     return df[columns].median(axis=1).rename("module_temp")
 

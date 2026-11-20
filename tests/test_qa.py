@@ -1,7 +1,11 @@
 import pandas as pd
 import pytest
 
-from scripts.qa import check_year_coverage, check_sentinels, cross_check_with_inverter_flags
+from scripts.qa import (
+    check_sentinels,
+    check_year_coverage,
+    cross_check_with_inverter_flags,
+)
 
 
 @pytest.mark.parametrize("year, expected", [(2015, 525600), (2016, 527040)])
@@ -47,13 +51,21 @@ def test_real_negatives_and_missing_values_are_not_sentinels():
 
 
 def test_cross_check_distinguishes_power_only_from_status_only():
-    frame = pd.DataFrame({
-        "inv_shutdown_power_flag": [1, 0, 1, 0],
-        "inv_shutdown_status_flag": [0, 1, 1, 0],
-        "inv_any_fault_reported": [1, 0, 1, 1],
-        "label_inverter": ["INVERTER_SHUTDOWN", "INVERTER_SHUTDOWN", "INVERTER_SHUTDOWN", "NORMAL"],
-        "Op_Mask": [1, 1, 1, 1], "POA_fused": [800] * 4,
-    })
+    frame = pd.DataFrame(
+        {
+            "inv_shutdown_power_flag": [1, 0, 1, 0],
+            "inv_shutdown_status_flag": [0, 1, 1, 0],
+            "inv_any_fault_reported": [1, 0, 1, 1],
+            "label_inverter": [
+                "INVERTER_SHUTDOWN",
+                "INVERTER_SHUTDOWN",
+                "INVERTER_SHUTDOWN",
+                "NORMAL",
+            ],
+            "Op_Mask": [1, 1, 1, 1],
+            "POA_fused": [800] * 4,
+        }
+    )
     result = cross_check_with_inverter_flags(frame)["observations"]
     assert result["shutdown_power_only"] == 1
     assert result["shutdown_status_only"] == 1

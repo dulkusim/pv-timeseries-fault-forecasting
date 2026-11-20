@@ -1,47 +1,60 @@
-
 import pandas as pd
 
+from .cleaning import apply_missingness_policy
 from .config import SiteConfig
 from .feature_selection import (
     drop_features,
     drop_legacy_rtds,
 )
-from .cleaning import apply_missingness_policy
+from .inverter import (
+    REVISED_INVERTER_POLICY,
+    InverterPolicy,
+    inverter_features,
+    label_inverter,
+)
 from .operating import (
+    module_temp,
     operating_mask,
     poa_fused,
-    module_temp,
     pr_evaluable,
 )
 from .performance import (
     expected_power,
-    performance_features,
     label_power,
+    performance_features,
 )
-from .strings import (
-    clean_string_bounds,
-    string_aggregates,
-    string_voltage_proxy,
-    string_normalized,
-    fit_string_baselines,
-    apply_string_baselines,
-    label_string,
-)
-from .inverter import (
-    InverterPolicy,
-    REVISED_INVERTER_POLICY,
-    inverter_features,
-    label_inverter,
-)
-
-
 from .reporting import append_features
+from .strings import (
+    apply_string_baselines,
+    clean_string_bounds,
+    fit_string_baselines,
+    label_string,
+    string_aggregates,
+    string_normalized,
+    string_voltage_proxy,
+)
 
 STAGES = (
-    "secondary", "redundant", "rtd", "missing", "bounds", "operating",
-    "poa", "temperature", "pr_mask", "expected", "performance", "round",
-    "power_labels", "aggregates", "voltage", "normalized", "baselines",
-    "string_labels", "inverter", "inverter_labels",
+    "secondary",
+    "redundant",
+    "rtd",
+    "missing",
+    "bounds",
+    "operating",
+    "poa",
+    "temperature",
+    "pr_mask",
+    "expected",
+    "performance",
+    "round",
+    "power_labels",
+    "aggregates",
+    "voltage",
+    "normalized",
+    "baselines",
+    "string_labels",
+    "inverter",
+    "inverter_labels",
 )
 
 
@@ -80,8 +93,10 @@ def run_labeling(
             result = clean_string_bounds(result)
         elif stage in ("operating", "poa", "temperature", "pr_mask"):
             function = {
-                "operating": operating_mask, "poa": poa_fused,
-                "temperature": module_temp, "pr_mask": pr_evaluable,
+                "operating": operating_mask,
+                "poa": poa_fused,
+                "temperature": module_temp,
+                "pr_mask": pr_evaluable,
             }[stage]
             result = append_features(result, function(result, site).to_frame())
         elif stage == "expected":
@@ -90,26 +105,46 @@ def run_labeling(
             result = append_features(result, performance_features(result))
         elif stage == "round":
             columns = [
-                "module_temp", "P_expected_DC_kW", "P_expected_AC_kW", "PR",
-                "PR_roll_5min_weighted", "PR_roll_15min_weighted",
-                "PR_roll_60min_weighted", "PR_roll_std_15min", "power_deficit_kW",
+                "module_temp",
+                "P_expected_DC_kW",
+                "P_expected_AC_kW",
+                "PR",
+                "PR_roll_5min_weighted",
+                "PR_roll_15min_weighted",
+                "PR_roll_60min_weighted",
+                "PR_roll_std_15min",
+                "power_deficit_kW",
             ]
             result = result.assign(**{col: result[col].round(3) for col in columns})
         elif stage == "power_labels":
-            result = append_features(result, label_power(result, missing_label=missing_power_label).to_frame())
+            result = append_features(
+                result,
+                label_power(result, missing_label=missing_power_label).to_frame(),
+            )
         elif stage in ("aggregates", "voltage", "normalized"):
-            function = {"aggregates": string_aggregates, "voltage": string_voltage_proxy,
-                        "normalized": string_normalized}[stage]
+            function = {
+                "aggregates": string_aggregates,
+                "voltage": string_voltage_proxy,
+                "normalized": string_normalized,
+            }[stage]
             result = append_features(result, function(result))
         elif stage == "baselines":
-            fitted = fit_string_baselines(result, site) if baselines is None else baselines
+            fitted = (
+                fit_string_baselines(result, site) if baselines is None else baselines
+            )
             result = append_features(result, apply_string_baselines(result, fitted))
         elif stage == "string_labels":
-            result = append_features(result, label_string(result, core_strings=core_strings).to_frame())
+            result = append_features(
+                result, label_string(result, core_strings=core_strings).to_frame()
+            )
         elif stage == "inverter":
-            result = append_features(result, inverter_features(result, site, policy=inverter_policy))
+            result = append_features(
+                result, inverter_features(result, site, policy=inverter_policy)
+            )
         elif stage == "inverter_labels":
-            result = append_features(result, label_inverter(result, policy=inverter_policy).to_frame())
+            result = append_features(
+                result, label_inverter(result, policy=inverter_policy).to_frame()
+            )
     return result
 
 
@@ -122,31 +157,24 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
         "label_inverter",
     )
 
-    missing = [
-        col for col in label_columns
-        if col not in df.columns
-    ]
+    missing = [col for col in label_columns if col not in df.columns]
 
     if missing:
-        raise ValueError(
-            f"Missing label columns: {missing}"
-        )
+        raise ValueError(f"Missing label columns: {missing}")
 
     records = []
 
     for column in label_columns:
-        counts = df[column].value_counts(
-            dropna=False
-        )
+        counts = df[column].value_counts(dropna=False)
 
         for label, count in counts.items():
-            records.append({
-                "label_type": column,
-                "label": label,
-                "count": int(count),
-                "percentage": (
-                    100 * count / len(df)
-                ),
-            })
+            records.append(
+                {
+                    "label_type": column,
+                    "label": label,
+                    "count": int(count),
+                    "percentage": (100 * count / len(df)),
+                }
+            )
 
     return pd.DataFrame(records)

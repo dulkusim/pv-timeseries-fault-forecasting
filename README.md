@@ -95,7 +95,7 @@ Run its setup and Drive cells, then select your dataset:
 
 ```python
 SITE_NAME = "canopy"  # "canopy" or "ground"
-YEAR = 2015           # 2015, 2016, 2017 or 2018
+YEAR = 2015  # 2015, 2016, 2017 or 2018
 SAVE_CHECKPOINTS = False
 OVERWRITE_FINAL = False
 ```

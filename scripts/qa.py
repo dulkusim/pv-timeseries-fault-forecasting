@@ -16,7 +16,8 @@ def check_year_coverage(df: pd.DataFrame, year: int) -> dict:
     grid = pd.date_range(
         pd.Timestamp(year=year, month=1, day=1, tz=df.index.tz),
         pd.Timestamp(year=year + 1, month=1, day=1, tz=df.index.tz),
-        freq="min", inclusive="left",
+        freq="min",
+        inclusive="left",
     )
     unique = df.index.unique()
     missing = grid.difference(unique)
@@ -35,8 +36,11 @@ def check_year_coverage(df: pd.DataFrame, year: int) -> dict:
         "off_grid_timestamps": off_grid,
         "nonminute_steps": int(steps.ne(pd.Timedelta(minutes=1)).sum()),
         "complete": (
-            len(df) == len(grid) and not duplicates and not len(missing)
-            and not len(off_grid) and df.index.is_monotonic_increasing
+            len(df) == len(grid)
+            and not duplicates
+            and not len(missing)
+            and not len(off_grid)
+            and df.index.is_monotonic_increasing
         ),
     }
 
@@ -68,16 +72,21 @@ def cross_check_with_inverter_flags(df: pd.DataFrame) -> pd.DataFrame:
     shutdown = df["label_inverter"].eq("INVERTER_SHUTDOWN")
     efficiency = df["label_inverter"].eq("INVERTER_EFFICIENCY_FAULT")
     evaluable = df["Op_Mask"].eq(1) & df["POA_fused"].ge(100)
-    return pd.Series({
-        "shutdown_power_only": int((power & ~status).sum()),
-        "shutdown_status_only": int((status & ~power).sum()),
-        "shutdown_both_flags": int((power & status).sum()),
-        "shutdown_either_flag": int((power | status).sum()),
-        "shutdown_label": int(shutdown.sum()),
-        "shutdown_also_reported": int((shutdown & reported).sum()),
-        "shutdown_without_report": int((shutdown & ~reported).sum()),
-        "efficiency_fault_label": int(efficiency.sum()),
-        "efficiency_also_reported": int((efficiency & reported).sum()),
-        "efficiency_without_report": int((efficiency & ~reported).sum()),
-        "reported_only_evaluable": int((reported & ~shutdown & ~efficiency & evaluable).sum()),
-    }, name="observations").to_frame()
+    return pd.Series(
+        {
+            "shutdown_power_only": int((power & ~status).sum()),
+            "shutdown_status_only": int((status & ~power).sum()),
+            "shutdown_both_flags": int((power & status).sum()),
+            "shutdown_either_flag": int((power | status).sum()),
+            "shutdown_label": int(shutdown.sum()),
+            "shutdown_also_reported": int((shutdown & reported).sum()),
+            "shutdown_without_report": int((shutdown & ~reported).sum()),
+            "efficiency_fault_label": int(efficiency.sum()),
+            "efficiency_also_reported": int((efficiency & reported).sum()),
+            "efficiency_without_report": int((efficiency & ~reported).sum()),
+            "reported_only_evaluable": int(
+                (reported & ~shutdown & ~efficiency & evaluable).sum()
+            ),
+        },
+        name="observations",
+    ).to_frame()

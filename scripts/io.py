@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 
@@ -23,17 +22,9 @@ def get_data_root() -> Path:
         )
 
     if not root.is_dir():
-        raise FileNotFoundError(
-            f"Data root does not exist: {root}"
-        )
+        raise FileNotFoundError(f"Data root does not exist: {root}")
 
     return root
-
-
-
-from pathlib import Path
-
-import pandas as pd
 
 
 def count_daily_files(base: str | Path) -> dict[str, int]:
@@ -89,14 +80,9 @@ def merge_daily_csvs(
             csv_files.append(csv_path)
 
     if not csv_files:
-        raise ValueError(
-            f"No daily CSV files found in {base}"
-        )
+        raise ValueError(f"No daily CSV files found in {base}")
 
-    frames = [
-        pd.read_csv(csv_path)
-        for csv_path in csv_files
-    ]
+    frames = [pd.read_csv(csv_path) for csv_path in csv_files]
 
     combined_df = pd.concat(
         frames,
@@ -123,10 +109,8 @@ def validate_site_year(
     """Reject datasets containing incorrect timestamps."""
 
     if df.empty:
-        raise ValueError(
-            f"Dataset for {year} is empty"
-    )
-    
+        raise ValueError(f"Dataset for {year} is empty")
+
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError("Index must be a DatetimeIndex")
 
@@ -137,9 +121,7 @@ def validate_site_year(
 
     if wrong_year.any():
         found = sorted(set(df.index.year.tolist()))
-        raise ValueError(
-            f"Expected year {year}, found years {found}"
-        )
+        raise ValueError(f"Expected year {year}, found years {found}")
 
 
 def load_site_year(
@@ -150,23 +132,15 @@ def load_site_year(
 
     root = get_data_root()
 
-    path = (
-        root
-        / "NIST_processed"
-        / site.raw_file_pattern.format(year=year)
-    )
+    path = root / "NIST_processed" / site.raw_file_pattern.format(year=year)
 
     if not path.is_file():
-        raise FileNotFoundError(
-            f"Missing {site.name} {year} dataset: {path}"
-        )
+        raise FileNotFoundError(f"Missing {site.name} {year} dataset: {path}")
 
     df = pd.read_csv(path)
 
     if "TIMESTAMP" not in df.columns:
-        raise ValueError(
-            f"TIMESTAMP column missing from {path}"
-        )
+        raise ValueError(f"TIMESTAMP column missing from {path}")
 
     df["TIMESTAMP"] = pd.to_datetime(
         df["TIMESTAMP"],
@@ -208,14 +182,10 @@ def save_stage(
     output_dir = root / "NIST_labeling_stages"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    output_path = (
-        output_dir / f"{site.name}_{year}_{stage}.csv"
-    )
+    output_path = output_dir / f"{site.name}_{year}_{stage}.csv"
 
     if output_path.exists():
-        raise FileExistsError(
-            f"Output already exists: {output_path}"
-        )
+        raise FileExistsError(f"Output already exists: {output_path}")
 
     df.to_csv(output_path, index=True, index_label="TIMESTAMP")
 

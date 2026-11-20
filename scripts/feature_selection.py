@@ -1,8 +1,6 @@
-
 import pandas as pd
 
 from .config import SiteConfig
-
 
 SECONDARY_FEATURES = (
     "RECORD",
@@ -61,21 +59,18 @@ def drop_features(
     if unknown:
         raise ValueError(f"Unknown feature groups: {unknown}")
 
-    columns = list(dict.fromkeys(
-        column
-        for group in groups
-        for column in FEATURE_GROUPS[group]
-    ))
+    columns = list(
+        dict.fromkeys(column for group in groups for column in FEATURE_GROUPS[group])
+    )
 
     return df.drop(columns=columns)
 
-#Example: df = drop_features(df, groups=("secondary",)) removes only secondary features
+
+# Example: df = drop_features(df, groups=("secondary",)) removes only secondary features
 # df = drop_features(df) removes both groups
 
 
-RTD_COLUMNS = tuple(
-    f"RTD_C_Avg_{i}" for i in range(1, 10)
-)
+RTD_COLUMNS = tuple(f"RTD_C_Avg_{i}" for i in range(1, 10))
 
 
 def rtd_report(df: pd.DataFrame) -> pd.DataFrame:
@@ -83,9 +78,11 @@ def rtd_report(df: pd.DataFrame) -> pd.DataFrame:
 
     means = df.loc[:, RTD_COLUMNS].mean()
 
-    return pd.DataFrame({
-        "mean_c": means,
-    })
+    return pd.DataFrame(
+        {
+            "mean_c": means,
+        }
+    )
 
 
 def detect_faulty_rtds(
@@ -121,9 +118,7 @@ def aggregate_faulty_rtds(
 ) -> list[str]:
     """Union of faulty RTDs detected across years."""
 
-    return sorted(
-        set().union(*yearly_faults.values())
-    )
+    return sorted(set().union(*yearly_faults.values()))
 
 
 def drop_legacy_rtds(
@@ -132,10 +127,7 @@ def drop_legacy_rtds(
 ) -> pd.DataFrame:
     """Reproduce the original site-specific RTD removal."""
 
-    columns = [
-        f"RTD_C_Avg_{i}"
-        for i in site.rtd_drop
-    ]
+    columns = [f"RTD_C_Avg_{i}" for i in site.rtd_drop]
 
     return df.drop(columns=columns)
 
@@ -177,21 +169,27 @@ def correlation_report(
     pairs = []
 
     for i, col_a in enumerate(columns):
-        for col_b in columns[i + 1:]:
+        for col_b in columns[i + 1 :]:
             value = corr.loc[col_a, col_b]
 
             if pd.notna(value) and abs(value) >= threshold:
-                pairs.append({
-                    "feature_1": col_a,
-                    "feature_2": col_b,
-                    "correlation": value,
-                })
+                pairs.append(
+                    {
+                        "feature_1": col_a,
+                        "feature_2": col_b,
+                        "correlation": value,
+                    }
+                )
 
-    return pd.DataFrame(
-        pairs,
-        columns=["feature_1", "feature_2", "correlation"],
-    ).sort_values(
-        "correlation",
-        key=lambda s: s.abs(),
-        ascending=False,
-    ).reset_index(drop=True)
+    return (
+        pd.DataFrame(
+            pairs,
+            columns=["feature_1", "feature_2", "correlation"],
+        )
+        .sort_values(
+            "correlation",
+            key=lambda s: s.abs(),
+            ascending=False,
+        )
+        .reset_index(drop=True)
+    )

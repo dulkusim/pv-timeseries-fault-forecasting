@@ -2,11 +2,11 @@ import numpy as np
 import pandas as pd
 
 from .config import (
-    SiteConfig,
     PR_CRITICAL,
     PR_SEVERE,
-    PR_UNDERPERFORMANCE,
     PR_SUSPICIOUS_HIGH,
+    PR_UNDERPERFORMANCE,
+    SiteConfig,
 )
 
 
@@ -19,21 +19,18 @@ def expected_power(
     expected_dc = (
         site.p_rated_dc_kw
         * (df["POA_fused"] / 1000.0)
-        * (
-            1
-            + site.gamma
-            * (df["module_temp"] - site.t_stc)
-        )
+        * (1 + site.gamma * (df["module_temp"] - site.t_stc))
     )
 
-    expected_ac = expected_dc.clip(
-        upper=site.p_ac_max_kw
-    )
+    expected_ac = expected_dc.clip(upper=site.p_ac_max_kw)
 
-    return pd.DataFrame({
-        "P_expected_DC_kW": expected_dc,
-        "P_expected_AC_kW": expected_ac,
-    }, index=df.index)
+    return pd.DataFrame(
+        {
+            "P_expected_DC_kW": expected_dc,
+            "P_expected_AC_kW": expected_ac,
+        },
+        index=df.index,
+    )
 
 
 def performance_features(
@@ -70,9 +67,7 @@ def performance_features(
             min_periods=min_periods,
         ).sum()
 
-        features[
-            f"PR_roll_{window}min_weighted"
-        ] = numerator / denominator
+        features[f"PR_roll_{window}min_weighted"] = numerator / denominator
 
     features["PR_roll_std_15min"] = pr.rolling(
         window=15,
@@ -95,23 +90,15 @@ def label_power(
 
     conditions = [
         df["PR_evaluable"] == 0,
-
         (
             df["P_expected_AC_kW"].isna()
             | df["InvPAC_kW_Avg"].isna()
             | (evaluable & pr.isna())
         ),
-
         evaluable & (pr >= 0) & (pr < PR_CRITICAL),
-
         evaluable & (pr >= PR_CRITICAL) & (pr < PR_SEVERE),
-
-        evaluable
-        & (pr >= PR_SEVERE)
-        & (pr < PR_UNDERPERFORMANCE),
-
+        evaluable & (pr >= PR_SEVERE) & (pr < PR_UNDERPERFORMANCE),
         evaluable & (pr > PR_SUSPICIOUS_HIGH),
-
         evaluable & (df["InvPAC_kW_Avg"] < 0),
     ]
 
