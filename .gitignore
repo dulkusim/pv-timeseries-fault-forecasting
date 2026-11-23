@@ -18,5 +18,4 @@ dist/
 *.fls
 *.log
 *.out
-*.pdf
 *.synctex.gz
